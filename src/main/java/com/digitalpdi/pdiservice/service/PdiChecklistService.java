@@ -1,10 +1,16 @@
 package com.digitalpdi.pdiservice.service;
 
-import com.digitalpdi.pdiservice.dto.*;
+import com.digitalpdi.pdiservice.dto.PdiChecklistCreateRequest;
+import com.digitalpdi.pdiservice.dto.PdiChecklistItemRequest;
+import com.digitalpdi.pdiservice.dto.PdiChecklistItemResponse;
+import com.digitalpdi.pdiservice.dto.PdiChecklistResponse;
 import com.digitalpdi.pdiservice.entity.Machine;
 import com.digitalpdi.pdiservice.entity.PdiChecklist;
 import com.digitalpdi.pdiservice.entity.PdiChecklistItem;
-import com.digitalpdi.pdiservice.enums.*;
+import com.digitalpdi.pdiservice.enums.MachineStatus;
+import com.digitalpdi.pdiservice.enums.PdiItemResult;
+import com.digitalpdi.pdiservice.enums.PdiStatus;
+import com.digitalpdi.pdiservice.enums.PdiType;
 import com.digitalpdi.pdiservice.repository.MachineRepository;
 import com.digitalpdi.pdiservice.repository.PdiChecklistItemRepository;
 import com.digitalpdi.pdiservice.repository.PdiChecklistRepository;
@@ -37,11 +43,13 @@ public class PdiChecklistService {
                 .shipmentApproved(false)
                 .build();
 
-        PdiChecklist saved = pdiChecklistRepository.save(checklist);
+        PdiChecklist savedChecklist = pdiChecklistRepository.save(checklist);
 
         if (request.getPdiType() == PdiType.PDI_1_PREPARATION) {
             machine.setStatus(MachineStatus.IN_PDI_1);
-        } else if (request.getPdiType() == PdiType.PDI_2_FINAL_CONTROL) {
+        }
+
+        if (request.getPdiType() == PdiType.PDI_2_FINAL_CONTROL) {
             machine.setStatus(MachineStatus.IN_PDI_2);
         }
 
@@ -49,19 +57,19 @@ public class PdiChecklistService {
 
         auditLogService.log(
                 "PdiChecklist",
-                saved.getId(),
+                savedChecklist.getId(),
                 "PDI_CHECKLIST_CREATED",
                 request.getResponsibleUser(),
                 request.getPdiType() + " checklist oluşturuldu"
         );
 
-        return toResponse(saved);
+        return toResponse(savedChecklist);
     }
 
     public PdiChecklistResponse addItem(Long checklistId, PdiChecklistItemRequest request) {
         PdiChecklist checklist = getChecklistEntity(checklistId);
 
-        validateItemRules(checklist, request);
+        validateNewItemRules(checklist, request);
 
         PdiChecklistItem item = PdiChecklistItem.builder()
                 .checklist(checklist)
@@ -80,7 +88,7 @@ public class PdiChecklistService {
                 checklist.getId(),
                 "PDI_ITEM_ADDED",
                 checklist.getResponsibleUser(),
-                "PDI kontrol maddesi eklendi: " + request.getItemTitle()
+                "PDI maddesi eklendi: " + request.getItemTitle()
         );
 
         return toResponse(checklist);
@@ -88,6 +96,7 @@ public class PdiChecklistService {
 
     public PdiChecklistResponse completeChecklist(Long checklistId) {
         PdiChecklist checklist = getChecklistEntity(checklistId);
+
         List<PdiChecklistItem> items = pdiChecklistItemRepository.findByChecklistId(checklistId);
 
         if (items.isEmpty()) {
@@ -98,12 +107,12 @@ public class PdiChecklistService {
             validateExistingItemRules(checklist, item);
         }
 
-        boolean hasNotOk = items.stream()
+        boolean hasNotOkItem = items.stream()
                 .anyMatch(item -> item.getResult() == PdiItemResult.NOT_OK);
 
         checklist.setCompletedAt(LocalDateTime.now());
 
-        if (hasNotOk) {
+        if (hasNotOkItem) {
             checklist.setStatus(PdiStatus.REJECTED);
             checklist.setShipmentApproved(false);
         } else {
@@ -118,17 +127,17 @@ public class PdiChecklistService {
             }
         }
 
-        PdiChecklist saved = pdiChecklistRepository.save(checklist);
+        PdiChecklist savedChecklist = pdiChecklistRepository.save(checklist);
 
         auditLogService.log(
                 "PdiChecklist",
-                saved.getId(),
+                savedChecklist.getId(),
                 "PDI_CHECKLIST_COMPLETED",
-                saved.getResponsibleUser(),
-                "PDI checklist tamamlandı. Sonuç: " + saved.getStatus()
+                savedChecklist.getResponsibleUser(),
+                "PDI checklist tamamlandı. Sonuç: " + savedChecklist.getStatus()
         );
 
-        return toResponse(saved);
+        return toResponse(savedChecklist);
     }
 
     public List<PdiChecklistResponse> getAll() {
@@ -154,7 +163,7 @@ public class PdiChecklistService {
                 .orElseThrow(() -> new RuntimeException("PDI checklist bulunamadı"));
     }
 
-    private void validateItemRules(PdiChecklist checklist, PdiChecklistItemRequest request) {
+    private void validateNewItemRules(PdiChecklist checklist, PdiChecklistItemRequest request) {
         if (checklist.getPdiType() == PdiType.PDI_2_FINAL_CONTROL) {
             if (request.getPhotoUrl() == null || request.getPhotoUrl().isBlank()) {
                 throw new RuntimeException("PDI 2 kontrolünde her madde için fotoğraf zorunludur.");
