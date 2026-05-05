@@ -14,4 +14,8 @@ public interface PdiChecklistRepository extends JpaRepository<PdiChecklist, Long
     List<PdiChecklist> findByPdiType(PdiType pdiType);
 
     List<PdiChecklist> findByStatus(PdiStatus status);
+
+    long countByStatus(PdiStatus status);
+
+    long countByPdiTypeAndStatus(PdiType pdiType, PdiStatus status);
 }
