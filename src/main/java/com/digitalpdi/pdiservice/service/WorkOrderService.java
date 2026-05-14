@@ -101,8 +101,18 @@ public class WorkOrderService {
         workOrder.setFinishedAt(LocalDateTime.now());
 
         if (workOrder.getStartedAt() != null) {
-            long minutes = Duration.between(workOrder.getStartedAt(), workOrder.getFinishedAt()).toMinutes();
-            workOrder.setActualMinute((int) minutes);
+            long minutes = Duration.between(
+                    workOrder.getStartedAt(),
+                    workOrder.getFinishedAt()
+            ).toMinutes();
+
+            int actualMinute = (int) minutes;
+
+            if (actualMinute <= 0) {
+                actualMinute = 1;
+            }
+
+            workOrder.setActualMinute(actualMinute);
         }
 
         WorkOrder saved = workOrderRepository.save(workOrder);
@@ -125,5 +135,13 @@ public class WorkOrderService {
 
     public List<WorkOrder> getAll() {
         return workOrderRepository.findAll();
+    }
+
+    public List<WorkOrder> getByAssignedUserId(Long assignedUserId) {
+        return workOrderRepository.findByAssignedUserId(assignedUserId);
+    }
+
+    public List<WorkOrder> getByMachineId(Long machineId) {
+        return workOrderRepository.findByMachineId(machineId);
     }
 }
