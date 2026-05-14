@@ -2,8 +2,17 @@ package com.digitalpdi.pdiservice.service;
 
 import com.digitalpdi.pdiservice.dto.DashboardSummaryResponse;
 import com.digitalpdi.pdiservice.entity.WorkOrder;
-import com.digitalpdi.pdiservice.enums.*;
-import com.digitalpdi.pdiservice.repository.*;
+import com.digitalpdi.pdiservice.enums.DamageStatus;
+import com.digitalpdi.pdiservice.enums.DocumentStatus;
+import com.digitalpdi.pdiservice.enums.MachineStatus;
+import com.digitalpdi.pdiservice.enums.PdiStatus;
+import com.digitalpdi.pdiservice.enums.PdiType;
+import com.digitalpdi.pdiservice.enums.WorkOrderStatus;
+import com.digitalpdi.pdiservice.repository.DamageReportRepository;
+import com.digitalpdi.pdiservice.repository.MachineRepository;
+import com.digitalpdi.pdiservice.repository.PdiChecklistRepository;
+import com.digitalpdi.pdiservice.repository.ScfDocumentRepository;
+import com.digitalpdi.pdiservice.repository.WorkOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,12 +33,12 @@ public class DashboardService {
         int totalActualMinutes = workOrderRepository.findAll()
                 .stream()
                 .filter(workOrder -> workOrder.getActualMinute() != null)
-                .mapToInt(WorkOrder::getActualMinute)
+                .mapToInt(workOrder -> Math.max(workOrder.getActualMinute(), 1))
                 .sum();
 
         double averageActualMinutes = completedWorkOrders == 0
                 ? 0
-                : (double) totalActualMinutes / completedWorkOrders;
+                : Math.max(1, (double) totalActualMinutes / completedWorkOrders);
 
         long openWorkOrders =
                 workOrderRepository.countByStatus(WorkOrderStatus.WAITING)

@@ -47,12 +47,12 @@ public class ProductivityService {
 
         int totalActualMinutes = workOrders.stream()
                 .filter(workOrder -> workOrder.getActualMinute() != null)
-                .mapToInt(WorkOrder::getActualMinute)
+                .mapToInt(workOrder -> Math.max(workOrder.getActualMinute(), 1))
                 .sum();
 
         double averageActualMinutes = completedWorkOrders == 0
                 ? 0
-                : (double) totalActualMinutes / completedWorkOrders;
+                : Math.max(1, (double) totalActualMinutes / completedWorkOrders);
 
         return ProductivitySummaryResponse.builder()
                 .totalWorkOrders(totalWorkOrders)
@@ -99,12 +99,12 @@ public class ProductivityService {
 
         int totalActualMinutes = assignedWorkOrders.stream()
                 .filter(workOrder -> workOrder.getActualMinute() != null)
-                .mapToInt(WorkOrder::getActualMinute)
+                .mapToInt(workOrder -> Math.max(workOrder.getActualMinute(), 1))
                 .sum();
 
         double averageActualMinutes = completedCount == 0
                 ? 0
-                : (double) totalActualMinutes / completedCount;
+                : Math.max(1, (double) totalActualMinutes / completedCount);
 
         return TechnicianProductivityResponse.builder()
                 .technicianId(technician.getId())
